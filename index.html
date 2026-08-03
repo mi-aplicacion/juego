@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Misión Soldado: Defensa Táctica</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #header {
+            margin-top: 15px;
+            font-size: 20px;
+            color: #00ff00;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(0,255,0,0.6);
+            z-index: 10;
+            display: flex;
+            gap: 20px;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1b2612, #0d130a);
+        }
+        /* El Soldado */
+        #soldier {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            font-size: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            transition: left 0.05s linear;
+        }
+        /* Obstáculos o Enemigos */
+        .enemy {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            font-size: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Balas del soldado */
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background-color: #ffcc00;
+            border-radius: 4px;
+            box-shadow: 0 0 10px #ffcc00;
+        }
+        /* Controles tácticos en pantalla para celulares */
+        #controls {
+            width: 100%;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 10;
+            padding: 0 20px;
+            border-top: 2px solid #333;
+        }
+        .ctrl-btn {
+            background-color: #333;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            font-size: 24px;
+            width: 75px;
+            height: 60px;
+            border-radius: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .ctrl-btn:active {
+            background-color: #00ff00;
+            color: #111;
+            transform: scale(0.95);
+        }
+        #fire-btn {
+            background-color: #551111;
+            color: #ff4444;
+            border-color: #ff4444;
+            width: 110px;
+        }
+        #fire-btn:active {
+            background-color: #ff4444;
+            color: #111;
+        }
+        /* Pantalla de Inicio / Game Over */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 15, 10, 0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            color: #00ff00;
+            text-align: center;
+            padding: 25px;
+        }
+        h1 {
+            color: #00ff00;
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 12px #00ff00;
+        }
+        p {
+            font-size: 16px;
+            color: #ccc;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        .btn {
+            background-color: #00ff00;
+            color: #111;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,255,0,0.4);
+        }
+        .btn:active {
+            transform: scale(0.95);
+            background-color: #00cc00;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div>🎖️ BAJAS: <span id="score">0</span></div>
+        <div>❤️ VIDA: <span id="lives">3</span></div>
+    </div>
+
+    <div id="game-container">
+        <div id="soldier">🪖</div>
+    </div>
+
+    <div id="controls">
+        <div class="ctrl-btn" id="left-btn">◀</div>
+        <div class="ctrl-btn" id="fire-btn">🔥 FUEGO</div>
+        <div class="ctrl-btn" id="right-btn">▶</div>
+    </div>
+
+    <div id="start-screen">
+        <h1>MISIÓN: SOLDADO</h1>
+        <p>Mueve al soldado con los botones ◀ ▶ y presiona FUEGO 🔥 para destruir a los enemigos que invaden la zona.</p>
+        <button class="btn" onclick="startGame()">INICIAR MISIÓN</button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const soldier = document.getElementById('soldier');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const startScreen = document.getElementById('start-screen');
+
+        let score = 0;
+        let lives = 3;
+        let soldierX = window.innerWidth / 2;
+        let isPlaying = false;
+        let enemyInterval, gameLoopInterval;
+        let enemies = [];
+        let bullets = [];
+
+        // Control de movimiento táctico
+        let movingLeft = false;
+        let movingRight = false;
+
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const fireBtn = document.getElementById('fire-btn');
+
+        // Eventos táctiles y de mouse para botones de control
+        leftBtn.addEventListener('pointerdown', () => { movingLeft = true; });
+        leftBtn.addEventListener('pointerup', () => { movingLeft = false; });
+        leftBtn.addEventListener('pointerleave', () => { movingLeft = false; });
+
+        rightBtn.addEventListener('pointerdown', () => { movingRight = true; });
+        rightBtn.addEventListener('pointerup', () => { movingRight = false; });
+        rightBtn.addEventListener('pointerleave', () => { movingRight = false; });
+
+        fireBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            shootBullet();
+        });
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            scoreDisplay.textContent = score;
+            livesDisplay.textContent = lives;
+            startScreen.style.display = 'none';
+            
+            // Limpiar elementos anteriores
+            enemies.forEach(e => e.el.remove());
+            bullets.forEach(b => b.el.remove());
+            enemies = [];
+            bullets = [];
+
+            soldierX = gameContainer.clientWidth / 2 - 35;
+            soldier.style.left = soldierX + 'px';
+            isPlaying = true;
+
+            if (enemyInterval) clearInterval(enemyInterval);
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+
+            enemyInterval = setInterval(createEnemy, 1200);
+            gameLoopInterval = setInterval(updateGame, 20);
+        }
+
+        function shootBullet() {
+            if (!isPlaying) return;
+            const bulletEl = document.createElement('div');
+            bulletEl.classList.add('bullet');
+            
+            // Posicionar bala frente al soldado
+            const bulletX = soldierX + 31;
+            const bulletY = gameContainer.clientHeight - 100;
+            bulletEl.style.left = bulletX + 'px';
+            bulletEl.style.top = bulletY + 'px';
+
+            gameContainer.appendChild(bulletEl);
+            bullets.push({ el: bulletEl, x: bulletX, y: bulletY });
+
+            if (navigator.vibrate) navigator.vibrate(30);
+        }
+
+        function createEnemy() {
+            if (!isPlaying) return;
+            const enemyEl = document.createElement('div');
+            enemyEl.classList.add('enemy');
+            
+            const enemyTypes = ['🤖', '👾', '🛸', '⚠️'];
+            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            enemyEl.innerHTML = type;
+
+            const maxX = gameContainer.clientWidth - 60;
+            const enemyX = Math.floor(Math.random() * Math.max(0, maxX));
+            const enemyY = -60;
+
+            enemyEl.style.left = enemyX + 'px';
+            enemyEl.style.top = enemyY + 'px';
+
+            gameContainer.appendChild(enemyEl);
+            enemies.push({ el: enemyEl, x: enemyX, y: enemyY });
+        }
+
+        function updateGame() {
+            if (!isPlaying) return;
+
+            // Movimiento lateral del soldado
+            const containerWidth = gameContainer.clientWidth;
+            if (movingLeft && soldierX > 0) {
+                soldierX -= 7;
+            }
+            if (movingRight && soldierX < containerWidth - 70) {
+                soldierX += 7;
+            }
+            soldier.style.left = soldierX + 'px';
+
+            // Actualizar posición de balas
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.y -= 12;
+                b.el.style.top = b.y + 'px';
+
+                // Eliminar si sale de la pantalla
+                if (b.y < 0) {
+                    b.el.remove();
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Actualizar posición de enemigos y verificar colisiones
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let en = enemies[i];
+                en.y += 2.5; // Velocidad de avance del enemigo
+                en.el.style.top = en.y + 'px';
+
+                // Colisión con el soldado (pierde vida)
+                const soldierYPos = gameContainer.clientHeight - 100;
+                if (en.y + 50 >= soldierYPos && en.x + 40 >= soldierX && en.x <= soldierX + 60) {
+                    en.el.remove();
+                    enemies.splice(i, 1);
+                    lives--;
+                    livesDisplay.textContent = lives;
+                    if (navigator.vibrate) navigator.vibrate(250);
+
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                    continue;
+                }
+
+                // Colisión de bala con enemigo
+                let enemyHit = false;
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    if (b.x >= en.x && b.x <= en.x + 50 && b.y <= en.y + 50 && b.y >= en.y) {
+                        // Impacto!
+                        b.el.remove();
+                        bullets.splice(j, 1);
+                        enemyHit = true;
+                        break;
+                    }
+                }
+
+                if (enemyHit) {
+                    en.el.remove();
+                    enemies.splice(i, 1);
+                    score += 10;
+                    scoreDisplay.textContent = score;
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    continue;
+                }
+
+                // Si el enemigo llega al fondo sin ser destruido
+                if (en.y > gameContainer.clientHeight) {
+                    en.el.remove();
+                    enemies.splice(i, 1);
+                    lives--;
+                    livesDisplay.textContent = lives;
+                    if (navigator.vibrate) navigator.vibrate(150);
+
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            clearInterval(enemyInterval);
+            clearInterval(gameLoopInterval);
+
+            startScreen.style.display = 'flex';
+            startScreen.querySelector('h1').textContent = '¡MISIÓN FALLIDA!';
+            startScreen.querySelector('p').innerHTML = `Los enemigos superaron la defensa.<br>Puntuación total de bajas: <b>${score}</b>`;
+            startScreen.querySelector('.btn').textContent = 'REINTENTAR MISIÓN';
+        }
+    </script>
+</body>
+</html>
+
