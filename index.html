@@ -21,38 +21,43 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             overflow: hidden;
         }
 
         #game-container {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             max-width: 480px;
-            max-height: 850px;
+            max-height: 100vh;
             background: radial-gradient(circle, #1a1f2c 0%, #05070b 100%);
-            box-shadow: 0 0 25px rgba(0, 255, 204, 0.3);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             overflow: hidden;
-            border: 2px solid rgba(0, 255, 204, 0.2);
+            border: 1px solid rgba(0, 255, 204, 0.2);
         }
 
         @media (min-width: 481px) {
             #game-container {
-                border-radius: 15px;
                 height: 90vh;
+                max-height: 850px;
+                border-radius: 12px;
+                box-shadow: 0 0 25px rgba(0, 255, 204, 0.3);
             }
         }
 
+        /* HUD Superior */
         #hud {
             display: flex;
             justify-content: space-between;
-            padding: 15px 20px;
-            background: rgba(11, 15, 25, 0.9);
-            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
-            font-size: 1rem;
+            padding: 10px 15px;
+            background: rgba(11, 15, 25, 0.95);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 8px;
+            margin: 8px;
+            font-size: 0.9rem;
             font-weight: bold;
             z-index: 10;
         }
@@ -60,10 +65,11 @@
         .hud-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
         }
 
+        /* Canvas del juego */
         #gameCanvas {
             flex-grow: 1;
             display: block;
@@ -71,49 +77,69 @@
             height: 100%;
         }
 
+        /* Controles Inferiores estilizados igual a tu original */
         #controls {
             display: flex;
-            justify-content: space-around;
-            padding: 15px;
-            background: rgba(11, 15, 25, 0.9);
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(11, 15, 25, 0.95);
             border-top: 1px solid rgba(0, 255, 204, 0.3);
+            gap: 10px;
             z-index: 10;
         }
 
         .control-btn {
+            flex: 1;
             background: transparent;
             border: 2px solid #00ffcc;
             color: #00ffcc;
-            padding: 12px 24px;
-            font-size: 1.2rem;
+            padding: 14px 0;
+            font-size: 1.1rem;
             font-family: inherit;
-            border-radius: 8px;
+            font-weight: bold;
+            border-radius: 10px;
             cursor: pointer;
             box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
             outline: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #fireBtn {
+            border-color: #ff0055;
+            color: #ff0055;
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
         }
 
         .control-btn:active {
             background: #00ffcc;
             color: #05070b;
-            box-shadow: 0 0 20px #00ffcc;
-            transform: scale(0.95);
+            transform: scale(0.96);
+        }
+
+        #fireBtn:active {
+            background: #ff0055;
+            color: #ffffff;
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
+        <!-- HUD / Marcadores -->
         <div id="hud">
             <div class="hud-item">🎯 BAJAS: <span id="score">0</span></div>
             <div class="hud-item">🛡️ VIDA: <span id="lives">3</span></div>
         </div>
 
+        <!-- Canvas -->
         <canvas id="gameCanvas"></canvas>
 
+        <!-- Controles -->
         <div id="controls">
             <button class="control-btn" id="leftBtn">◀</button>
-            <button class="control-btn" id="fireBtn">🔥</button>
+            <button class="control-btn" id="fireBtn">⚡ FUEGO</button>
             <button class="control-btn" id="rightBtn">▶</button>
         </div>
     </div>
@@ -130,14 +156,56 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
+        // --- SISTEMA DE AUDIO (Sintetizador Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'explosion') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.linearRampToValueAtTime(30, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        // Variables del juego
         let score = 0;
         let lives = 3;
 
         let player = {
             x: canvas.width / 2 - 25,
             y: canvas.height - 70,
-            width: 50,
-            height: 50,
+            width: 45,
+            height: 45,
             speed: 6
         };
 
@@ -147,27 +215,35 @@
         let movingLeft = false;
         let movingRight = false;
 
-        // Controles táctiles y de mouse/teclado
-        document.getElementById("leftBtn").addEventListener("mousedown", () => movingLeft = true);
-        document.getElementById("leftBtn").addEventListener("mouseup", () => movingLeft = false);
-        document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); movingLeft = true; });
-        document.getElementById("leftBtn").addEventListener("touchend", () => movingLeft = false);
+        // Eventos táctiles y de mouse para controles inferiores
+        const leftBtn = document.getElementById("leftBtn");
+        const rightBtn = document.getElementById("rightBtn");
+        const fireBtn = document.getElementById("fireBtn");
 
-        document.getElementById("rightBtn").addEventListener("mousedown", () => movingRight = true);
-        document.getElementById("rightBtn").addEventListener("mouseup", () => movingRight = false);
-        document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); movingRight = true; });
-        document.getElementById("rightBtn").addEventListener("touchend", () => movingRight = false);
+        leftBtn.addEventListener("mousedown", () => movingLeft = true);
+        leftBtn.addEventListener("mouseup", () => movingLeft = false);
+        leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); movingLeft = true; });
+        leftBtn.addEventListener("touchend", () => movingLeft = false);
 
-        document.getElementById("fireBtn").addEventListener("click", () => {
-            bullets.push({ x: player.x + player.width / 2 - 4, y: player.y, width: 8, height: 16, speed: 8 });
-        });
+        rightBtn.addEventListener("mousedown", () => movingRight = true);
+        rightBtn.addEventListener("mouseup", () => movingRight = false);
+        rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); movingRight = true; });
+        rightBtn.addEventListener("touchend", () => movingRight = false);
 
-        // Soporte para teclado en PC (Flechas o A/D)
+        function disparar() {
+            bullets.push({ x: player.x + player.width / 2 - 3, y: player.y, width: 6, height: 14, speed: 9 });
+            playSound('laser');
+        }
+
+        fireBtn.addEventListener("click", disparar);
+        fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); disparar(); });
+
+        // Soporte de teclado para PC
         window.addEventListener("keydown", (e) => {
             if (e.key === "ArrowLeft" || e.key === "a") movingLeft = true;
             if (e.key === "ArrowRight" || e.key === "d") movingRight = true;
             if (e.key === " " || e.key === "ArrowUp") {
-                bullets.push({ x: player.x + player.width / 2 - 4, y: player.y, width: 8, height: 16, speed: 8 });
+                if (!e.repeat) disparar();
             }
         });
         window.addEventListener("keyup", (e) => {
@@ -180,29 +256,33 @@
             enemies.push({
                 x: Math.random() * (canvas.width - 45),
                 y: -50,
-                width: 45,
-                height: 45,
-                speed: 2.5
+                width: 42,
+                height: 42,
+                speed: 2.2
             });
-        }, 1800);
+        }, 1900);
 
         function update() {
-            if (movingLeft && player.x > 0) player.x -= player.speed;
-            if (movingRight && player.x < canvas.width - player.width) player.x += player.speed;
+            // Actualizar posición jugador dentro de los límites
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + (movingRight ? player.speed : 0) - (movingLeft ? player.speed : 0)));
 
+            // Actualizar balas
             bullets.forEach((b, index) => {
                 b.y -= b.speed;
                 if (b.y < 0) bullets.splice(index, 1);
             });
 
+            // Actualizar enemigos
             enemies.forEach((e, index) => {
                 e.y += e.speed;
+                // Si el enemigo pasa la pantalla
                 if (e.y > canvas.height) {
                     enemies.splice(index, 1);
                     lives--;
                     document.getElementById("lives").innerText = lives;
+                    playSound('hit');
                     if (lives <= 0) {
-                        alert("¡Juego terminado! Puntuación: " + score);
+                        alert("¡Juego terminado! Puntuación final: " + score);
                         score = 0;
                         lives = 3;
                         document.getElementById("score").innerText = score;
@@ -210,12 +290,14 @@
                     }
                 }
 
+                // Colisión Bala - Enemigo
                 bullets.forEach((b, bIndex) => {
                     if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
                         enemies.splice(index, 1);
                         bullets.splice(bIndex, 1);
                         score++;
                         document.getElementById("score").innerText = score;
+                        playSound('explosion');
                     }
                 });
             });
@@ -224,13 +306,13 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Dibujar Robot (Jugador) estilo emoji/icono brillante
-            ctx.font = "40px sans-serif";
+            // Dibujar jugador (Robot)
+            ctx.font = "38px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("🤖", player.x + player.width / 2, player.y + player.height / 2);
 
-            // Dibujar Balas (Láseres)
+            // Dibujar Láseres
             ctx.fillStyle = "#ff0055";
             ctx.shadowBlur = 10;
             ctx.shadowColor = "#ff0055";
