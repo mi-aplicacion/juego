@@ -134,7 +134,7 @@
             y: canvas.height - 75,
             ancho: 45,
             alto: 45,
-            velocidad: 7,
+            velocidad: 6,
             moviendoIzquierda: false,
             moviendoDerecha: false
         };
@@ -197,7 +197,7 @@
                 y: jugador.y,
                 ancho: 6,
                 alto: 16,
-                velocidad: 10
+                velocidad: 9
             });
             reproducirSonido('disparo');
         }
@@ -210,7 +210,8 @@
                 y: -40,
                 ancho: anchoOvni,
                 alto: 35,
-                velocidad: 2 + Math.random() * 1.5
+                // Velocidad reducida considerablemente para que bajen de forma suave
+                velocidad: 0.8 + Math.random() * 0.8
             });
         }
 
@@ -231,9 +232,9 @@
                 }
             }
 
-            // Generación periódica de OVNIs
+            // Generación periódica de OVNIs (intervalo mayor para dar respiro)
             contadorCreacionOvni++;
-            if (contadorCreacionOvni > 40) {
+            if (contadorCreacionOvni > 90) {
                 crearOvni();
                 contadorCreacionOvni = 0;
             }
