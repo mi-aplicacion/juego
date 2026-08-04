@@ -77,29 +77,29 @@
             height: 100%;
         }
 
-        /* Controles Inferiores */
+        /* Controles Inferiores Corregidos y Visibles */
         #controls {
             display: flex;
             justify-content: space-between;
-            padding: 10px 12px;
-            background: rgba(11, 15, 25, 0.95);
-            border-top: 1px solid rgba(0, 255, 204, 0.3);
-            gap: 10px;
+            padding: 12px 15px;
+            background: rgba(11, 15, 25, 0.98);
+            border-top: 1px solid rgba(0, 255, 204, 0.4);
+            gap: 12px;
             z-index: 10;
         }
 
         .control-btn {
             flex: 1;
-            background: transparent;
+            background: rgba(0, 255, 204, 0.08);
             border: 2px solid #00ffcc;
             color: #00ffcc;
             padding: 14px 0;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-family: inherit;
             font-weight: bold;
             border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.25);
             outline: none;
             display: flex;
             justify-content: center;
@@ -107,15 +107,17 @@
         }
 
         #fireBtn {
+            background: rgba(255, 0, 85, 0.08);
             border-color: #ff0055;
             color: #ff0055;
-            box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.25);
+            font-size: 1rem;
         }
 
         .control-btn:active {
             background: #00ffcc;
             color: #05070b;
-            transform: scale(0.96);
+            transform: scale(0.95);
         }
 
         #fireBtn:active {
@@ -208,9 +210,9 @@
         // Variables del juego
         let score = 0;
         let lives = 3;
-        let enemySpeed = 2.0; // Velocidad inicial base de los enemigos
-        let spawnInterval = 1900; // Tiempo inicial entre la aparición de enemigos (en ms)
-        let lastLevelMilestone = 0; // Para controlar cuándo sonó o subió de nivel cada 50 puntos
+        let enemySpeed = 2.0;
+        let spawnInterval = 1900;
+        let lastLevelMilestone = 0;
 
         let player = {
             x: canvas.width / 2 - 25,
@@ -262,7 +264,6 @@
             if (e.key === "ArrowRight" || e.key === "d") movingRight = false;
         });
 
-        // Generador dinámico de enemigos según el nivel de dificultad actual
         let enemyTimer = null;
 
         function resetEnemySpawner() {
@@ -281,16 +282,13 @@
         resetEnemySpawner();
 
         function update() {
-            // Movimiento fluido del jugador
             player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + (movingRight ? player.speed : 0) - (movingLeft ? player.speed : 0)));
 
-            // Actualizar balas
             bullets.forEach((b, index) => {
                 b.y -= b.speed;
                 if (b.y < 0) bullets.splice(index, 1);
             });
 
-            // Actualizar enemigos
             enemies.forEach((e, index) => {
                 e.y += e.speed;
                 if (e.y > canvas.height) {
@@ -311,7 +309,6 @@
                     }
                 }
 
-                // Colisión Bala - Enemigo
                 bullets.forEach((b, bIndex) => {
                     if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
                         enemies.splice(index, 1);
@@ -320,11 +317,10 @@
                         document.getElementById("score").innerText = score;
                         playSound('explosion');
 
-                        // --- INCREMENTAR VELOCIDAD CADA 50 PUNTOS ---
                         if (score % 50 === 0 && score !== lastLevelMilestone) {
                             lastLevelMilestone = score;
-                            enemySpeed += 0.6; // Aumenta la velocidad de caída
-                            spawnInterval = Math.max(600, spawnInterval - 200); // Aparecen más rápido (con un límite seguro)
+                            enemySpeed += 0.6;
+                            spawnInterval = Math.max(600, spawnInterval - 200);
                             resetEnemySpawner();
                             playSound('levelup');
                         }
@@ -336,19 +332,16 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Dibujar jugador (Robot)
             ctx.font = "38px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("🤖", player.x + player.width / 2, player.y + player.height / 2);
 
-            // Dibujar Láseres
             ctx.fillStyle = "#ff0055";
             ctx.shadowBlur = 10;
             ctx.shadowColor = "#ff0055";
             bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
 
-            // Dibujar Enemigos (OVNIs)
             enemies.forEach(e => {
                 ctx.fillText("🛸", e.x + e.width / 2, e.y + e.height / 2);
             });
